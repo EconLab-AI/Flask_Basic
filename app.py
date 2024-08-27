@@ -1,45 +1,59 @@
-import os
+import requests
 from flask import Flask, redirect, render_template, request, send_from_directory, url_for
-from langchain_openai import AzureOpenAI
 
 app = Flask(__name__)
 
-# Umgebungsvariablen für Azure OpenAI
-api_key = os.environ.get('API_KEY')
-api_version = os.environ.get('API_VERSION')
-azure_deployment = os.environ.get('AZURE_DEPLOYMENT')
-model_name = os.environ.get('MODEL_NAME')
+# Hartcodierte Werte für Azure OpenAI
+api_key = 'f264663f38a4417c9837e7d19737a73e'
+azure_endpoint = "https://econchat.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2023-03-15-preview"
 
 @app.route('/')
 def index():
-   print('Request for index page received')
-   return render_template('index.html')
+    print('Request for index page received')
+    return render_template('index.html')
 
 @app.route('/favicon.ico')
 def favicon():
-    return send_from_directory(os.path.join(app.root_path, 'static'),
-                               'favicon.ico', mimetype='image/vnd.microsoft.icon')
+    return send_from_directory('static', 'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 @app.route('/hello', methods=['POST'])
 def hello():
-   req = request.form.get('req')
+    req = request.form.get('req')
 
-   # Azure OpenAI Client
-   llm = AzureOpenAI(
-       api_key=api_key,
-       api_version=api_version,
-       azure_deployment=azure_deployment,
-       model_name=model_name,
-   )
+    try:
+        # Manuelle HTTP-POST-Anfrage mit der requests-Bibliothek
+        response = requests.post(
+            azure_endpoint,
+            headers={
+                "Content-Type": "application/json",
+                "api-key": api_key
+            },
+            json={
+                "messages": [
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": req}
+                ],
+                "max_tokens": 150
+            }
+        )
 
-   response = llm.invoke(req)
-   
-   if req:
-       print('Request for hello page received with req=%s' % req)
-       return render_template('hello.html', req=response)
-   else:
-       print('Request for hello page received with no req or blank req -- redirecting')
-       return redirect(url_for('index'))
+        # Überprüfung, ob die Anfrage erfolgreich war
+        if response.status_code == 200:
+            data = response.json()
+            answer = data["choices"][0]["message"]["content"].strip()
+        else:
+            return f"An error occurred: {response.status_code} - {response.text}", 500
+
+    except Exception as e:
+        print(f"Error occurred: {str(e)}")
+        return f"An error occurred: {str(e)}", 500
+
+    if req:
+        print('Request for hello page received with req=%s' % req)
+        return render_template('hello.html', req=answer)
+    else:
+        print('Request for hello page received with no req or blank req -- redirecting')
+        return redirect(url_for('index'))
 
 if __name__ == '__main__':
-   app.run(host='0.0.0.0', port=8000)
+    app.run(host='0.0.0.0', port=8000)
