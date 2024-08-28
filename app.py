@@ -1,11 +1,12 @@
+import os
 import requests
 from flask import Flask, redirect, render_template, request, send_from_directory, url_for
 
 app = Flask(__name__)
 
-# Hartcodierte Werte für Azure OpenAI
-api_key = 'f264663f38a4417c9837e7d19737a73e'
-azure_endpoint = "https://econchat.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2023-03-15-preview"
+# Umgebungsvariablen für Azure OpenAI
+api_key = os.environ.get('API_KEY')
+azure_endpoint = os.environ.get('AZURE_ENDPOINT')
 
 @app.route('/')
 def index():
